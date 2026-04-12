@@ -1,20 +1,78 @@
-import React from "react";
+"use client";
 
-export const metadata = {
-  title: "PPE Dashboard",
-  description: "PPE Sensitivity Analysis Tool"
-};
+import React, { useState, useEffect } from "react";
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function Home() {
+
+  const [usefulLife, setUsefulLife] = useState(20);
+  const [residual, setResidual] = useState(10000);
+  const [cost, setCost] = useState(100000);
+
+  // Read URL parameters
+  useEffect(() => {
+
+    const params = new URLSearchParams(window.location.search);
+
+    const lifeParam = params.get("life");
+    const residualParam = params.get("residual");
+    const costParam = params.get("cost");
+
+    if (lifeParam) setUsefulLife(Number(lifeParam));
+    if (residualParam) setResidual(Number(residualParam));
+    if (costParam) setCost(Number(costParam));
+
+  }, []);
+
+  function calculateDep() {
+    return ((cost - residual) / usefulLife).toFixed(2);
+  }
+
   return (
-    <html lang="en">
-      <body>
-        {children}
-      </body>
-    </html>
+
+    <div style={{ padding: 40 }}>
+
+      <h1>PPE Sensitivity Dashboard</h1>
+
+      <div>
+        <label>Asset Cost</label>
+        <input
+          type="number"
+          value={cost}
+          onChange={(e)=>setCost(Number(e.target.value))}
+        />
+      </div>
+
+      <div>
+        <label>Useful Life</label>
+        <input
+          type="range"
+          min="1"
+          max="40"
+          value={usefulLife}
+          onChange={(e)=>setUsefulLife(Number(e.target.value))}
+        />
+        {usefulLife} years
+      </div>
+
+      <div>
+        <label>Residual Value</label>
+        <input
+          type="range"
+          min="0"
+          max="50000"
+          value={residual}
+          onChange={(e)=>setResidual(Number(e.target.value))}
+        />
+        ${residual}
+      </div>
+
+      <h2>
+        Annual Depreciation:
+        ${calculateDep()}
+      </h2>
+
+    </div>
+
   );
+
 }
