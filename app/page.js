@@ -4,15 +4,19 @@ import { useState, useEffect } from "react";
 
 export default function Home() {
 
-  const [usefulLife, setUsefulLife] = useState(20);
-  const [residual, setResidual] = useState(10000);
-  const [cost, setCost] = useState(100000);
+  const [assets, setAssets] = useState([
+    {
+      id: 1,
+      name: "Equipment",
+      cost: 100000,
+      residual: 10000,
+      life: 20
+    }
+  ]);
 
   const [meanDep, setMeanDep] = useState(0);
-  const [ciLow, setCiLow] = useState(0);
-  const [ciHigh, setCiHigh] = useState(0);
 
-  // Read URL parameters
+  // URL parameters (first asset only)
   useEffect(() => {
 
     const params = new URLSearchParams(window.location.search);
@@ -21,14 +25,51 @@ export default function Home() {
     const residualParam = params.get("residual");
     const costParam = params.get("cost");
 
-    if (lifeParam) setUsefulLife(Number(lifeParam));
-    if (residualParam) setResidual(Number(residualParam));
-    if (costParam) setCost(Number(costParam));
+    if (lifeParam || residualParam || costParam) {
+
+      setAssets([{
+        id: 1,
+        name: "Equipment",
+        cost: Number(costParam) || 100000,
+        residual: Number(residualParam) || 10000,
+        life: Number(lifeParam) || 20
+      }]);
+
+    }
 
   }, []);
 
-  function calculateDep(cost, residual, life) {
-    return (cost - residual) / life;
+  function updateAsset(id, field, value) {
+
+    setAssets(
+      assets.map(asset =>
+        asset.id === id
+          ? { ...asset, [field]: value }
+          : asset
+      )
+    );
+
+  }
+
+  function addAsset() {
+
+    setAssets([
+      ...assets,
+      {
+        id: Date.now(),
+        name: "New Asset",
+        cost: 50000,
+        residual: 5000,
+        life: 15
+      }
+    ]);
+
+  }
+
+  function calculateDep(asset) {
+
+    return (asset.cost - asset.residual) / asset.life;
+
   }
 
   function runMonteCarlo() {
@@ -37,89 +78,139 @@ export default function Home() {
 
     for (let i = 0; i < 500; i++) {
 
-      let lifeVar =
-        usefulLife * (0.8 + Math.random() * 0.4);
+      let totalDep = 0;
 
-      let residualVar =
-        residual * (0.8 + Math.random() * 0.4);
+      assets.forEach(asset => {
 
-      let dep =
-        calculateDep(cost, residualVar, lifeVar);
+        let lifeVar =
+          asset.life * (0.8 + Math.random() * 0.4);
 
-      results.push(dep);
+        let residualVar =
+          asset.residual *
+          (0.8 + Math.random() * 0.4);
+
+        let dep =
+          (asset.cost - residualVar) / lifeVar;
+
+        totalDep += dep;
+
+      });
+
+      results.push(totalDep);
+
     }
-
-    results.sort((a, b) => a - b);
 
     let mean =
       results.reduce((a, b) => a + b, 0) /
       results.length;
 
-    let low =
-      results[Math.floor(results.length * 0.025)];
-
-    let high =
-      results[Math.floor(results.length * 0.975)];
-
     setMeanDep(mean.toFixed(2));
-    setCiLow(low.toFixed(2));
-    setCiHigh(high.toFixed(2));
+
   }
 
   return (
 
     <div style={{ padding: 40 }}>
 
-      <h1>PPE Sensitivity Dashboard</h1>
+      <h1>PPE Multi-Asset Simulator</h1>
 
-      <div>
-        <label>Asset Cost</label>
-        <input
-          type="number"
-          value={cost}
-          onChange={(e)=>setCost(Number(e.target.value))}
-        />
-      </div>
+      {assets.map(asset => (
 
-      <div>
-        <label>Useful Life</label>
-        <input
-          type="range"
-          min="1"
-          max="40"
-          value={usefulLife}
-          onChange={(e)=>setUsefulLife(Number(e.target.value))}
-        />
-        {usefulLife} years
-      </div>
+        <div key={asset.id}
+             style={{
+               border: "1px solid gray",
+               padding: 10,
+               marginBottom: 10
+             }}>
 
-      <div>
-        <label>Residual Value</label>
-        <input
-          type="range"
-          min="0"
-          max="50000"
-          value={residual}
-          onChange={(e)=>setResidual(Number(e.target.value))}
-        />
-        ${residual}
-      </div>
+          <input
+            value={asset.name}
+            onChange={(e)=>
+              updateAsset(
+                asset.id,
+                "name",
+                e.target.value
+              )
+            }
+          />
 
-      <br />
+          <div>
+
+            Cost:
+            <input
+              type="number"
+              value={asset.cost}
+              onChange={(e)=>
+                updateAsset(
+                  asset.id,
+                  "cost",
+                  Number(e.target.value)
+                )
+              }
+            />
+
+          </div>
+
+          <div>
+
+            Useful Life:
+            <input
+              type="range"
+              min="1"
+              max="40"
+              value={asset.life}
+              onChange={(e)=>
+                updateAsset(
+                  asset.id,
+                  "life",
+                  Number(e.target.value)
+                )
+              }
+            />
+
+            {asset.life} years
+
+          </div>
+
+          <div>
+
+            Residual:
+            <input
+              type="range"
+              min="0"
+              max="50000"
+              value={asset.residual}
+              onChange={(e)=>
+                updateAsset(
+                  asset.id,
+                  "residual",
+                  Number(e.target.value)
+                )
+              }
+            />
+
+            ${asset.residual}
+
+          </div>
+
+        </div>
+
+      ))}
+
+      <button onClick={addAsset}>
+        Add Asset
+      </button>
+
+      <br /><br />
 
       <button onClick={runMonteCarlo}>
-        Run Monte Carlo Simulation
+        Run Portfolio Monte Carlo
       </button>
 
       <h2>
-        Mean Depreciation:
+        Mean Portfolio Depreciation:
         ${meanDep}
       </h2>
-
-      <h3>
-        95% Confidence Interval:
-        ${ciLow} — ${ciHigh}
-      </h3>
 
     </div>
 
