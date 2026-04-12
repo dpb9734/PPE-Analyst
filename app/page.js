@@ -8,6 +8,10 @@ export default function Home() {
   const [residual, setResidual] = useState(10000);
   const [cost, setCost] = useState(100000);
 
+  const [meanDep, setMeanDep] = useState(0);
+  const [ciLow, setCiLow] = useState(0);
+  const [ciHigh, setCiHigh] = useState(0);
+
   // Read URL parameters
   useEffect(() => {
 
@@ -23,8 +27,43 @@ export default function Home() {
 
   }, []);
 
-  function calculateDep() {
-    return ((cost - residual) / usefulLife).toFixed(2);
+  function calculateDep(cost, residual, life) {
+    return (cost - residual) / life;
+  }
+
+  function runMonteCarlo() {
+
+    let results = [];
+
+    for (let i = 0; i < 500; i++) {
+
+      let lifeVar =
+        usefulLife * (0.8 + Math.random() * 0.4);
+
+      let residualVar =
+        residual * (0.8 + Math.random() * 0.4);
+
+      let dep =
+        calculateDep(cost, residualVar, lifeVar);
+
+      results.push(dep);
+    }
+
+    results.sort((a, b) => a - b);
+
+    let mean =
+      results.reduce((a, b) => a + b, 0) /
+      results.length;
+
+    let low =
+      results[Math.floor(results.length * 0.025)];
+
+    let high =
+      results[Math.floor(results.length * 0.975)];
+
+    setMeanDep(mean.toFixed(2));
+    setCiLow(low.toFixed(2));
+    setCiHigh(high.toFixed(2));
   }
 
   return (
@@ -66,13 +105,26 @@ export default function Home() {
         ${residual}
       </div>
 
+      <br />
+
+      <button onClick={runMonteCarlo}>
+        Run Monte Carlo Simulation
+      </button>
+
       <h2>
-        Annual Depreciation:
-        ${calculateDep()}
+        Mean Depreciation:
+        ${meanDep}
       </h2>
+
+      <h3>
+        95% Confidence Interval:
+        ${ciLow} — ${ciHigh}
+      </h3>
 
     </div>
 
   );
+
+}
 
 }
