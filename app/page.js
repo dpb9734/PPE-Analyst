@@ -4,6 +4,10 @@ import { useState, useEffect } from "react";
 
 export default function Home() {
 
+  // Ticker input
+  const [ticker, setTicker] = useState("");
+
+  // Asset list
   const [assets, setAssets] = useState([
     {
       id: 1,
@@ -14,7 +18,10 @@ export default function Home() {
     }
   ]);
 
+  // Monte Carlo result
   const [meanDep, setMeanDep] = useState(0);
+
+  // Forecast table
   const [schedule, setSchedule] = useState([]);
 
   // URL parameter support
@@ -40,6 +47,7 @@ export default function Home() {
 
   }, []);
 
+  // Update asset fields
   function updateAsset(id, field, value) {
 
     setAssets(
@@ -52,6 +60,7 @@ export default function Home() {
 
   }
 
+  // Add new asset
   function addAsset() {
 
     setAssets([
@@ -67,6 +76,7 @@ export default function Home() {
 
   }
 
+  // Monte Carlo simulation
   function runMonteCarlo() {
 
     let results = [];
@@ -85,7 +95,8 @@ export default function Home() {
           (0.8 + Math.random() * 0.4);
 
         let dep =
-          (asset.cost - residualVar) / lifeVar;
+          (asset.cost - residualVar) /
+          lifeVar;
 
         totalDep += dep;
 
@@ -103,6 +114,7 @@ export default function Home() {
 
   }
 
+  // Generate multi-year depreciation schedule
   function generateForecast() {
 
     let maxLife =
@@ -139,20 +151,112 @@ export default function Home() {
 
   }
 
+  // Simulated SEC Data Loader
+  // (Real EDGAR connection comes next)
+  async function fetchSECData() {
+
+    try {
+
+      let tickerUpper =
+        ticker.toUpperCase();
+
+      // Simulated company PPE data
+
+      if (tickerUpper === "XOM") {
+
+        setAssets([
+          {
+            id: 1,
+            name: "Upstream Equipment",
+            cost: 125000000,
+            residual: 8000000,
+            life: 22
+          },
+          {
+            id: 2,
+            name: "Facilities",
+            cost: 85000000,
+            residual: 5000000,
+            life: 30
+          }
+        ]);
+
+      }
+
+      else if (tickerUpper === "CVX") {
+
+        setAssets([
+          {
+            id: 1,
+            name: "Refining Assets",
+            cost: 98000000,
+            residual: 6000000,
+            life: 28
+          },
+          {
+            id: 2,
+            name: "Pipelines",
+            cost: 72000000,
+            residual: 4000000,
+            life: 35
+          }
+        ]);
+
+      }
+
+      else {
+
+        alert("Ticker not recognized yet.");
+
+      }
+
+    }
+
+    catch (error) {
+
+      console.log(error);
+
+    }
+
+  }
+
   return (
 
     <div style={{ padding: 40 }}>
 
       <h1>PPE Multi-Asset Simulator</h1>
 
+      {/* Ticker Input */}
+
+      <div style={{ marginBottom: 20 }}>
+
+        <strong>Ticker:</strong>
+
+        <input
+          type="text"
+          value={ticker}
+          onChange={(e)=>setTicker(e.target.value)}
+          placeholder="Enter ticker (e.g., XOM)"
+        />
+
+        <button onClick={fetchSECData}>
+          Load SEC Data
+        </button>
+
+      </div>
+
+      {/* Asset Inputs */}
+
       {assets.map(asset => (
 
-        <div key={asset.id}
-             style={{
-               border: "1px solid gray",
-               padding: 10,
-               marginBottom: 10
-             }}>
+        <div
+          key={asset.id}
+          style={{
+            border: "1px solid gray",
+            padding: 10,
+            marginBottom: 10
+          }}
+        >
 
           <div>
 
@@ -258,10 +362,12 @@ export default function Home() {
         <table border="1" cellPadding="5">
 
           <thead>
+
             <tr>
               <th>Year</th>
               <th>Depreciation</th>
             </tr>
+
           </thead>
 
           <tbody>
@@ -269,8 +375,11 @@ export default function Home() {
             {schedule.map(row => (
 
               <tr key={row.year}>
+
                 <td>{row.year}</td>
+
                 <td>${row.depreciation}</td>
+
               </tr>
 
             ))}
