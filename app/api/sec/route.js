@@ -18,11 +18,10 @@ export async function GET(request) {
 
     }
 
-    // SEC required headers
     const headers = {
 
       "User-Agent":
-        "PPE-Analyst dpb9734@nyu.edu",
+        "PPE-Analyst your_email@example.com",
 
       "Accept-Encoding":
         "gzip, deflate",
@@ -69,7 +68,7 @@ export async function GET(request) {
 
     }
 
-    // STEP 2 — Get filings
+    // STEP 2 — Find latest 10-K
 
     const submissionResponse =
       await fetch(
@@ -117,6 +116,70 @@ export async function GET(request) {
     const filingHTML =
       await filingResponse.text();
 
+    const text =
+      filingHTML.toLowerCase();
+
+    // STEP 4 — Find useful life patterns
+
+    const lifeMatches =
+      text.match(
+        /(\d+)\s*(to|-)\s*(\d+)\s*years/g
+      );
+
+    let assets = [];
+
+    if (lifeMatches) {
+
+      lifeMatches
+        .slice(0, 4)
+        .forEach((match, i) => {
+
+          const numbers =
+            match.match(/\d+/g);
+
+          const avgLife =
+            Math.round(
+              (Number(numbers[0]) +
+               Number(numbers[1])) / 2
+            );
+
+          assets.push({
+
+            id: i + 1,
+
+            name:
+              `PPE Asset ${i + 1}`,
+
+            cost: 100000000,
+
+            residual: 5000000,
+
+            life: avgLife
+
+          });
+
+        });
+
+    }
+
+    // fallback if nothing found
+
+    if (assets.length === 0) {
+
+      assets = [
+
+        {
+          id: 1,
+          name: "General Equipment",
+          cost: 100000000,
+          residual: 5000000,
+          life: 20
+        }
+
+      ];
+
+    }
+
     return Response.json({
 
       ticker: ticker,
@@ -125,8 +188,7 @@ export async function GET(request) {
 
       filingURL: filingURL,
 
-      preview:
-        filingHTML.slice(0, 5000)
+      assets: assets
 
     });
 
