@@ -16,7 +16,7 @@ export default function Home() {
 
   const [meanDep, setMeanDep] = useState(0);
 
-  // URL parameters (first asset only)
+  // URL parameter support
   useEffect(() => {
 
     const params = new URLSearchParams(window.location.search);
@@ -63,12 +63,6 @@ export default function Home() {
         life: 15
       }
     ]);
-
-  }
-
-  function calculateDep(asset) {
-
-    return (asset.cost - asset.residual) / asset.life;
 
   }
 
@@ -123,20 +117,28 @@ export default function Home() {
                marginBottom: 10
              }}>
 
-          <input
-            value={asset.name}
-            onChange={(e)=>
-              updateAsset(
-                asset.id,
-                "name",
-                e.target.value
-              )
-            }
-          />
+          <div>
+
+            <strong>Asset Name:</strong>
+
+            <input
+              type="text"
+              value={asset.name}
+              onChange={(e)=>
+                updateAsset(
+                  asset.id,
+                  "name",
+                  e.target.value
+                )
+              }
+            />
+
+          </div>
 
           <div>
 
-            Cost:
+            <strong>Cost:</strong>
+
             <input
               type="number"
               value={asset.cost}
@@ -153,11 +155,10 @@ export default function Home() {
 
           <div>
 
-            Useful Life:
+            <strong>Useful Life (years):</strong>
+
             <input
-              type="range"
-              min="1"
-              max="40"
+              type="number"
               value={asset.life}
               onChange={(e)=>
                 updateAsset(
@@ -168,17 +169,14 @@ export default function Home() {
               }
             />
 
-            {asset.life} years
-
           </div>
 
           <div>
 
-            Residual:
+            <strong>Residual Value:</strong>
+
             <input
-              type="range"
-              min="0"
-              max="50000"
+              type="number"
               value={asset.residual}
               onChange={(e)=>
                 updateAsset(
@@ -188,8 +186,6 @@ export default function Home() {
                 )
               }
             />
-
-            ${asset.residual}
 
           </div>
 
@@ -215,5 +211,7 @@ export default function Home() {
     </div>
 
   );
+
+}
 
 }
