@@ -68,7 +68,7 @@ export async function GET(request) {
 
     }
 
-    // STEP 2 — Pull Company Facts (XBRL)
+    // STEP 2 — Company Facts
 
     const factsResponse =
       await fetch(
@@ -82,97 +82,97 @@ export async function GET(request) {
     const usgaap =
       facts.facts["us-gaap"];
 
-    // STEP 3 — Extract PPE Tags
+    // STEP 3 — PPE COMPONENT TAGS
 
-    const ppeTags = [
+    const componentTags = [
 
-      "PropertyPlantAndEquipmentNet",
-      "PropertyPlantAndEquipmentGross",
-      "PropertyPlantAndEquipment",
-      "PropertyPlantEquipmentNet"
+      "Land",
+
+      "Buildings",
+
+      "MachineryAndEquipment",
+
+      "FurnitureAndFixtures",
+
+      "LeaseholdImprovements",
+
+      "ConstructionInProgress",
+
+      "OilAndGasProperties",
+
+      "TransportationEquipment",
+
+      "ComputerEquipment"
 
     ];
 
-    let ppeValue = null;
+    let assets = [];
 
-    for (let tag of ppeTags) {
+    componentTags.forEach((tag, index) => {
 
       if (usgaap[tag]) {
 
         const units =
-          usgaap[tag].units;
+          usgaap[tag].units["USD"];
 
-        const usd =
-          units["USD"];
+        if (units &&
+            units.length > 0) {
 
-        if (usd && usd.length > 0) {
+          const value =
+            units[units.length - 1].val;
 
-          ppeValue =
-            usd[usd.length - 1].val;
+          assets.push({
 
-          break;
+            id: index + 1,
+
+            name: tag,
+
+            cost: value,
+
+            residual:
+              Math.round(value * 0.05),
+
+            life: estimateLife(tag)
+
+          });
 
         }
 
       }
 
-    }
+    });
 
-    if (!ppeValue) {
+    // STEP 4 — Fallback if none found
 
-      return Response.json({
-        error:
-          "PPE value not found in XBRL"
+    if (assets.length === 0 &&
+        usgaap["PropertyPlantAndEquipmentNet"]) {
+
+      const fallbackUnits =
+        usgaap[
+          "PropertyPlantAndEquipmentNet"
+        ].units["USD"];
+
+      const value =
+        fallbackUnits[
+          fallbackUnits.length - 1
+        ].val;
+
+      assets.push({
+
+        id: 1,
+
+        name: "Total PPE",
+
+        cost: value,
+
+        residual:
+          Math.round(value * 0.05),
+
+        life: 20
+
       });
 
     }
-
-    // STEP 4 — Extract Depreciation
-
-    let depreciationValue = null;
-
-    if (
-      usgaap["DepreciationDepletionAndAmortization"]
-    ) {
-
-      const depUnits =
-        usgaap[
-          "DepreciationDepletionAndAmortization"
-        ].units["USD"];
-
-      if (depUnits &&
-          depUnits.length > 0) {
-
-        depreciationValue =
-          depUnits[
-            depUnits.length - 1
-          ].val;
-
-      }
-
-    }
-
-    // STEP 5 — Build Asset Model
-
-    const estimatedLife = 20;
-
-    const estimatedResidual =
-      Math.round(ppeValue * 0.05);
-
-    const asset = {
-
-      id: 1,
-
-      name:
-        "Total PPE (SEC Derived)",
-
-      cost: ppeValue,
-
-      residual: estimatedResidual,
-
-      life: estimatedLife
-
-    };
 
     return Response.json({
 
@@ -180,12 +180,7 @@ export async function GET(request) {
 
       cik: cik,
 
-      ppeValue: ppeValue,
-
-      depreciationValue:
-        depreciationValue,
-
-      assets: [asset]
+      assets: assets
 
     });
 
@@ -198,10 +193,34 @@ export async function GET(request) {
     return Response.json({
 
       error:
-        "SEC XBRL extraction failed"
+        "SEC multi-asset extraction failed"
 
     });
 
   }
+
+}
+
+
+// LIFE ESTIMATION FUNCTION
+
+function estimateLife(tag) {
+
+  if (tag.includes("Buildings"))
+    return 40;
+
+  if (tag.includes("Machinery"))
+    return 20;
+
+  if (tag.includes("Transportation"))
+    return 10;
+
+  if (tag.includes("Computer"))
+    return 5;
+
+  if (tag.includes("Leasehold"))
+    return 15;
+
+  return 20;
 
 }
