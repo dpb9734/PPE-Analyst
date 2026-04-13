@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 export async function GET(request) {
 
   try {
@@ -16,11 +18,11 @@ export async function GET(request) {
 
     }
 
-    // Required SEC headers
+    // SEC required headers
     const headers = {
 
       "User-Agent":
-        "PPE-Analyst dpb9734.edu",
+        "PPE-Analyst dpb9734@nyu.edu",
 
       "Accept-Encoding":
         "gzip, deflate",
@@ -67,7 +69,7 @@ export async function GET(request) {
 
     }
 
-    // STEP 2 — Get filings list
+    // STEP 2 — Get filings
 
     const submissionResponse =
       await fetch(
@@ -104,7 +106,7 @@ export async function GET(request) {
     const filingURL =
       `https://www.sec.gov/Archives/edgar/data/${parseInt(cik)}/${accession}/${primaryDoc}`;
 
-    // STEP 3 — Download filing HTML
+    // STEP 3 — Download HTML
 
     const filingResponse =
       await fetch(
@@ -114,8 +116,6 @@ export async function GET(request) {
 
     const filingHTML =
       await filingResponse.text();
-
-    // Return preview
 
     return Response.json({
 
