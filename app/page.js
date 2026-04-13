@@ -7,7 +7,7 @@ export default function Home() {
   // Ticker input
   const [ticker, setTicker] = useState("");
 
-  // Asset list
+  // Assets
   const [assets, setAssets] = useState([
     {
       id: 1,
@@ -21,10 +21,10 @@ export default function Home() {
   // Monte Carlo result
   const [meanDep, setMeanDep] = useState(0);
 
-  // Forecast table
+  // Forecast schedule
   const [schedule, setSchedule] = useState([]);
 
-  // URL parameter support
+  // URL parameters support
   useEffect(() => {
 
     const params = new URLSearchParams(window.location.search);
@@ -47,7 +47,7 @@ export default function Home() {
 
   }, []);
 
-  // Update asset fields
+  // Update asset
   function updateAsset(id, field, value) {
 
     setAssets(
@@ -60,7 +60,7 @@ export default function Home() {
 
   }
 
-  // Add new asset
+  // Add asset
   function addAsset() {
 
     setAssets([
@@ -76,7 +76,7 @@ export default function Home() {
 
   }
 
-  // Monte Carlo simulation
+  // Monte Carlo
   function runMonteCarlo() {
 
     let results = [];
@@ -114,7 +114,7 @@ export default function Home() {
 
   }
 
-  // Generate multi-year depreciation schedule
+  // Forecast
   function generateForecast() {
 
     let maxLife =
@@ -151,70 +151,57 @@ export default function Home() {
 
   }
 
-  // Simulated SEC Data Loader
-  // (Real EDGAR connection comes next)
+  // SEC Fetch (REAL API CALL)
   async function fetchSECData() {
 
     try {
 
-      let tickerUpper =
-        ticker.toUpperCase();
+      if (!ticker) {
 
-      // Simulated company PPE data
-
-      if (tickerUpper === "XOM") {
-
-        setAssets([
-          {
-            id: 1,
-            name: "Upstream Equipment",
-            cost: 125000000,
-            residual: 8000000,
-            life: 22
-          },
-          {
-            id: 2,
-            name: "Facilities",
-            cost: 85000000,
-            residual: 5000000,
-            life: 30
-          }
-        ]);
+        alert("Enter a ticker first.");
+        return;
 
       }
 
-      else if (tickerUpper === "CVX") {
+      const response =
+        await fetch(
+          `/api/sec?ticker=${ticker}`
+        );
 
-        setAssets([
-          {
-            id: 1,
-            name: "Refining Assets",
-            cost: 98000000,
-            residual: 6000000,
-            life: 28
-          },
-          {
-            id: 2,
-            name: "Pipelines",
-            cost: 72000000,
-            residual: 4000000,
-            life: 35
-          }
-        ]);
+      const data =
+        await response.json();
+
+      if (data.error) {
+
+        alert(data.error);
+        return;
 
       }
 
-      else {
+      // Show filing link (temporary UI)
+      alert(
+        `Latest 10-K Found:\n${data.filingURL}`
+      );
 
-        alert("Ticker not recognized yet.");
+      console.log(
+        "CIK:",
+        data.cik
+      );
 
-      }
+      console.log(
+        "Filing:",
+        data.filingURL
+      );
 
     }
 
     catch (error) {
 
       console.log(error);
+
+      alert(
+        "SEC request failed."
+      );
 
     }
 
@@ -235,7 +222,9 @@ export default function Home() {
         <input
           type="text"
           value={ticker}
-          onChange={(e)=>setTicker(e.target.value)}
+          onChange={(e)=>
+            setTicker(e.target.value)
+          }
           placeholder="Enter ticker (e.g., XOM)"
         />
 
