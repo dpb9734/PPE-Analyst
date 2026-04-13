@@ -20,7 +20,7 @@ export async function GET(request) {
     const headers = {
 
       "User-Agent":
-        "PPE-Analyst-App dpb9734@nyu.edu",
+        "PPE-Analyst dpb9734.edu",
 
       "Accept-Encoding":
         "gzip, deflate",
@@ -30,7 +30,7 @@ export async function GET(request) {
 
     };
 
-    // STEP 1 — Get ticker list
+    // STEP 1 — Convert ticker to CIK
 
     const tickerResponse =
       await fetch(
@@ -67,7 +67,7 @@ export async function GET(request) {
 
     }
 
-    // STEP 2 — Get filings
+    // STEP 2 — Get filings list
 
     const submissionResponse =
       await fetch(
@@ -104,11 +104,29 @@ export async function GET(request) {
     const filingURL =
       `https://www.sec.gov/Archives/edgar/data/${parseInt(cik)}/${accession}/${primaryDoc}`;
 
+    // STEP 3 — Download filing HTML
+
+    const filingResponse =
+      await fetch(
+        filingURL,
+        { headers }
+      );
+
+    const filingHTML =
+      await filingResponse.text();
+
+    // Return preview
+
     return Response.json({
 
       ticker: ticker,
+
       cik: cik,
-      filingURL: filingURL
+
+      filingURL: filingURL,
+
+      preview:
+        filingHTML.slice(0, 5000)
 
     });
 
