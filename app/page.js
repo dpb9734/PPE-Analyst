@@ -51,6 +51,41 @@ export default function Home() {
 
   }
 
+  async function fetchSECData() {
+
+    try {
+
+      const response =
+        await fetch(
+          `/api/sec?ticker=${ticker}`
+        );
+
+      const data =
+        await response.json();
+
+      if (data.error) {
+
+        alert(data.error);
+        return;
+
+      }
+
+      setAssets(data.assets);
+
+      alert(
+        `Assets loaded for ${ticker}`
+      );
+
+    }
+
+    catch (error) {
+
+      console.log(error);
+
+    }
+
+  }
+
   function runMonteCarlo() {
 
     let results = [];
@@ -115,64 +150,17 @@ export default function Home() {
       });
 
       yearlySchedule.push({
+
         year: year,
-        depreciation: totalDep.toFixed(2)
+
+        depreciation:
+          totalDep.toFixed(2)
+
       });
 
     }
 
     setSchedule(yearlySchedule);
-
-  }
-
-  // NEW — Real SEC Fetch
-
-  async function fetchSECData() {
-
-    try {
-
-      if (!ticker) {
-
-        alert("Enter ticker first");
-        return;
-
-      }
-
-      const response =
-        await fetch(
-          `/api/sec?ticker=${ticker}`
-        );
-
-      const data =
-        await response.json();
-
-      if (data.error) {
-
-        alert(data.error);
-        return;
-
-      }
-
-      console.log(
-        "10-K Preview:",
-        data.preview
-      );
-
-      alert(
-        `10-K HTML Loaded for ${ticker}`
-      );
-
-    }
-
-    catch (error) {
-
-      console.log(error);
-
-      alert(
-        "SEC request failed"
-      );
-
-    }
 
   }
 
@@ -187,12 +175,10 @@ export default function Home() {
         <strong>Ticker:</strong>
 
         <input
-          type="text"
           value={ticker}
           onChange={(e)=>
             setTicker(e.target.value)
           }
-          placeholder="Enter ticker"
         />
 
         <button onClick={fetchSECData}>
