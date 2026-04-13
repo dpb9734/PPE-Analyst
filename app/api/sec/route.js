@@ -31,7 +31,7 @@ export async function GET(request) {
 
     };
 
-    // STEP 1 — Convert ticker to CIK
+    // STEP 1 — Ticker → CIK
 
     const tickerResponse =
       await fetch(
@@ -68,135 +68,124 @@ export async function GET(request) {
 
     }
 
-    // STEP 2 — Get latest 10-K
+    // STEP 2 — Pull Company Facts (XBRL)
 
-    const submissionResponse =
+    const factsResponse =
       await fetch(
-        `https://data.sec.gov/submissions/CIK${cik}.json`,
+        `https://data.sec.gov/api/xbrl/companyfacts/CIK${cik}.json`,
         { headers }
       );
 
-    const submissionData =
-      await submissionResponse.json();
+    const facts =
+      await factsResponse.json();
 
-    const filings =
-      submissionData.filings.recent;
+    const usgaap =
+      facts.facts["us-gaap"];
 
-    const index =
-      filings.form.findIndex(
-        form => form === "10-K"
-      );
+    // STEP 3 — Extract PPE Tags
 
-    if (index === -1) {
+    const ppeTags = [
 
-      return Response.json({
-        error: "10-K not found"
-      });
+      "PropertyPlantAndEquipmentNet",
+      "PropertyPlantAndEquipmentGross",
+      "PropertyPlantAndEquipment",
+      "PropertyPlantEquipmentNet"
 
-    }
+    ];
 
-    const accession =
-      filings.accessionNumber[index]
-        .replace(/-/g, "");
+    let ppeValue = null;
 
-    const primaryDoc =
-      filings.primaryDocument[index];
+    for (let tag of ppeTags) {
 
-    const filingURL =
-      `https://www.sec.gov/Archives/edgar/data/${parseInt(cik)}/${accession}/${primaryDoc}`;
+      if (usgaap[tag]) {
 
-    // STEP 3 — Download filing
+        const units =
+          usgaap[tag].units;
 
-    const filingResponse =
-      await fetch(
-        filingURL,
-        { headers }
-      );
+        const usd =
+          units["USD"];
 
-    const html =
-      await filingResponse.text();
+        if (usd && usd.length > 0) {
 
-    // STEP 4 — Find PPE section
+          ppeValue =
+            usd[usd.length - 1].val;
 
-    const lower =
-      html.toLowerCase();
+          break;
 
-    const ppeIndex =
-      lower.indexOf(
-        "property, plant and equipment"
-      );
+        }
 
-    let snippet = "";
-
-    if (ppeIndex !== -1) {
-
-      snippet =
-        html.slice(
-          ppeIndex,
-          ppeIndex + 10000
-        );
+      }
 
     }
 
-    // STEP 5 — Extract dollar values
-
-    const valueMatches =
-      snippet.match(
-        /\$?\s?\d{1,3}(,\d{3})+/g
-      );
-
-    let assets = [];
-
-    if (valueMatches &&
-        valueMatches.length > 0) {
-
-      valueMatches
-        .slice(0, 3)
-        .forEach((val, i) => {
-
-          let numeric =
-            Number(
-              val
-                .replace(/\$/g, "")
-                .replace(/,/g, "")
-            );
-
-          assets.push({
-
-            id: i + 1,
-
-            name:
-              `PPE Category ${i + 1}`,
-
-            cost: numeric,
-
-            residual:
-              Math.round(numeric * 0.05),
-
-            life: 20
-
-          });
-
-        });
-
-    }
-
-    if (assets.length === 0) {
+    if (!ppeValue) {
 
       return Response.json({
         error:
-          "PPE table not detected"
+          "PPE value not found in XBRL"
       });
 
     }
+
+    // STEP 4 — Extract Depreciation
+
+    let depreciationValue = null;
+
+    if (
+      usgaap["DepreciationDepletionAndAmortization"]
+    ) {
+
+      const depUnits =
+        usgaap[
+          "DepreciationDepletionAndAmortization"
+        ].units["USD"];
+
+      if (depUnits &&
+          depUnits.length > 0) {
+
+        depreciationValue =
+          depUnits[
+            depUnits.length - 1
+          ].val;
+
+      }
+
+    }
+
+    // STEP 5 — Build Asset Model
+
+    const estimatedLife = 20;
+
+    const estimatedResidual =
+      Math.round(ppeValue * 0.05);
+
+    const asset = {
+
+      id: 1,
+
+      name:
+        "Total PPE (SEC Derived)",
+
+      cost: ppeValue,
+
+      residual: estimatedResidual,
+
+      life: estimatedLife
+
+    };
 
     return Response.json({
 
       ticker: ticker,
 
-      filingURL: filingURL,
+      cik: cik,
 
-      assets: assets
+      ppeValue: ppeValue,
+
+      depreciationValue:
+        depreciationValue,
+
+      assets: [asset]
 
     });
 
@@ -207,7 +196,10 @@ export async function GET(request) {
     console.log(error);
 
     return Response.json({
-      error: "SEC parsing failed"
+
+      error:
+        "SEC XBRL extraction failed"
+
     });
 
   }
