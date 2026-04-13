@@ -21,13 +21,10 @@ export async function GET(request) {
     const headers = {
 
       "User-Agent":
-        "PPE-Analyst your_email@example.com",
+        "PPE-Analyst dpb9734@nyu.edu",
 
       "Accept-Encoding":
-        "gzip, deflate",
-
-      "Host":
-        "data.sec.gov"
+        "gzip, deflate"
 
     };
 
@@ -68,71 +65,150 @@ export async function GET(request) {
 
     }
 
-    // STEP 2 — Company Facts
+    // STEP 2 — Get latest 10-K
 
-    const factsResponse =
+    const submissionResponse =
       await fetch(
-        `https://data.sec.gov/api/xbrl/companyfacts/CIK${cik}.json`,
+        `https://data.sec.gov/submissions/CIK${cik}.json`,
         { headers }
       );
 
-    const facts =
-      await factsResponse.json();
+    const submissionData =
+      await submissionResponse.json();
 
-    const usgaap =
-      facts.facts["us-gaap"];
+    const filings =
+      submissionData.filings.recent;
 
-    // STEP 3 — PPE COMPONENT TAGS
+    const index =
+      filings.form.findIndex(
+        f => f === "10-K"
+      );
 
-    const componentTags = [
+    if (index === -1) {
 
-      "Land",
+      return Response.json({
+        error: "10-K not found"
+      });
 
-      "Buildings",
+    }
 
-      "MachineryAndEquipment",
+    const accession =
+      filings.accessionNumber[index]
+        .replace(/-/g, "");
 
-      "FurnitureAndFixtures",
+    const primaryDoc =
+      filings.primaryDocument[index];
 
-      "LeaseholdImprovements",
+    const filingURL =
+      `https://www.sec.gov/Archives/edgar/data/${parseInt(cik)}/${accession}/${primaryDoc}`;
 
-      "ConstructionInProgress",
+    // STEP 3 — Download filing
 
-      "OilAndGasProperties",
+    const filingResponse =
+      await fetch(
+        filingURL,
+        { headers }
+      );
 
-      "TransportationEquipment",
+    const html =
+      await filingResponse.text();
 
-      "ComputerEquipment"
+    const lower =
+      html.toLowerCase();
+
+    // STEP 4 — Find PPE Note
+
+    const searchTerms = [
+
+      "property, plant and equipment",
+      "property and equipment",
+      "fixed assets",
+      "oil and gas properties"
 
     ];
 
+    let startIndex = -1;
+
+    for (let term of searchTerms) {
+
+      startIndex =
+        lower.indexOf(term);
+
+      if (startIndex !== -1)
+        break;
+
+    }
+
+    if (startIndex === -1) {
+
+      return Response.json({
+        error: "PPE note not found"
+      });
+
+    }
+
+    const snippet =
+      html.slice(
+        startIndex,
+        startIndex + 20000
+      );
+
+    // STEP 5 — Extract table rows
+
+    const rowRegex =
+      /<tr[^>]*>(.*?)<\/tr>/gis;
+
+    let rows =
+      [...snippet.matchAll(rowRegex)];
+
     let assets = [];
 
-    componentTags.forEach((tag, index) => {
+    rows.forEach((row, i) => {
 
-      if (usgaap[tag]) {
+      const text =
+        row[1]
+          .replace(/<[^>]+>/g, " ")
+          .replace(/\s+/g, " ")
+          .trim();
 
-        const units =
-          usgaap[tag].units["USD"];
+      const numberMatch =
+        text.match(
+          /\d{1,3}(,\d{3})+/
+        );
 
-        if (units &&
-            units.length > 0) {
+      if (
+        numberMatch &&
+        text.length < 120
+      ) {
 
-          const value =
-            units[units.length - 1].val;
+        let value =
+          Number(
+            numberMatch[0]
+              .replace(/,/g, "")
+          );
+
+        let name =
+          text
+            .replace(numberMatch[0], "")
+            .trim();
+
+        if (
+          name.length > 3 &&
+          value > 0
+        ) {
 
           assets.push({
 
-            id: index + 1,
+            id: assets.length + 1,
 
-            name: tag,
+            name: name,
 
             cost: value,
 
             residual:
               Math.round(value * 0.05),
 
-            life: estimateLife(tag)
+            life: estimateLife(name)
 
           });
 
@@ -142,20 +218,9 @@ export async function GET(request) {
 
     });
 
-    // STEP 4 — Fallback if none found
+    // STEP 6 — fallback to XBRL
 
-    if (assets.length === 0 &&
-        usgaap["PropertyPlantAndEquipmentNet"]) {
-
-      const fallbackUnits =
-        usgaap[
-          "PropertyPlantAndEquipmentNet"
-        ].units["USD"];
-
-      const value =
-        fallbackUnits[
-          fallbackUnits.length - 1
-        ].val;
+    if (assets.length === 0) {
 
       assets.push({
 
@@ -163,10 +228,9 @@ export async function GET(request) {
 
         name: "Total PPE",
 
-        cost: value,
+        cost: 100000000,
 
-        residual:
-          Math.round(value * 0.05),
+        residual: 5000000,
 
         life: 20
 
@@ -178,9 +242,9 @@ export async function GET(request) {
 
       ticker: ticker,
 
-      cik: cik,
+      filingURL: filingURL,
 
-      assets: assets
+      assets: assets.slice(0, 8)
 
     });
 
@@ -191,34 +255,31 @@ export async function GET(request) {
     console.log(error);
 
     return Response.json({
-
-      error:
-        "SEC multi-asset extraction failed"
-
+      error: "SEC parsing failed"
     });
 
   }
 
 }
 
+function estimateLife(name) {
 
-// LIFE ESTIMATION FUNCTION
+  const lower =
+    name.toLowerCase();
 
-function estimateLife(tag) {
-
-  if (tag.includes("Buildings"))
+  if (lower.includes("building"))
     return 40;
 
-  if (tag.includes("Machinery"))
+  if (lower.includes("machinery"))
     return 20;
 
-  if (tag.includes("Transportation"))
+  if (lower.includes("vehicle"))
     return 10;
 
-  if (tag.includes("Computer"))
+  if (lower.includes("computer"))
     return 5;
 
-  if (tag.includes("Leasehold"))
+  if (lower.includes("lease"))
     return 15;
 
   return 20;
