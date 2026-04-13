@@ -8,11 +8,34 @@ export async function GET(request) {
     const ticker =
       searchParams.get("ticker");
 
-    // Step 1 — Convert ticker to CIK
+    if (!ticker) {
+
+      return Response.json({
+        error: "Ticker required"
+      });
+
+    }
+
+    // Required SEC headers
+    const headers = {
+
+      "User-Agent":
+        "PPE-Analyst-App dpb9734@nyu.edu",
+
+      "Accept-Encoding":
+        "gzip, deflate",
+
+      "Host":
+        "data.sec.gov"
+
+    };
+
+    // STEP 1 — Get ticker list
 
     const tickerResponse =
       await fetch(
-        "https://www.sec.gov/files/company_tickers.json"
+        "https://www.sec.gov/files/company_tickers.json",
+        { headers }
       );
 
     const tickerData =
@@ -44,40 +67,41 @@ export async function GET(request) {
 
     }
 
-    // Step 2 — Get company submissions
+    // STEP 2 — Get filings
 
     const submissionResponse =
       await fetch(
         `https://data.sec.gov/submissions/CIK${cik}.json`,
-        {
-          headers: {
-            "User-Agent":
-              "PPE-Analysis-App"
-          }
-        }
+        { headers }
       );
 
     const submissionData =
       await submissionResponse.json();
 
-    // Step 3 — Get latest 10-K
-
-    let filings =
+    const filings =
       submissionData.filings.recent;
 
-    let index =
+    const index =
       filings.form.findIndex(
         form => form === "10-K"
       );
 
-    let accession =
+    if (index === -1) {
+
+      return Response.json({
+        error: "10-K not found"
+      });
+
+    }
+
+    const accession =
       filings.accessionNumber[index]
         .replace(/-/g, "");
 
-    let primaryDoc =
+    const primaryDoc =
       filings.primaryDocument[index];
 
-    let filingURL =
+    const filingURL =
       `https://www.sec.gov/Archives/edgar/data/${parseInt(cik)}/${accession}/${primaryDoc}`;
 
     return Response.json({
@@ -91,6 +115,8 @@ export async function GET(request) {
   }
 
   catch (error) {
+
+    console.log(error);
 
     return Response.json({
       error: "SEC fetch failed"
