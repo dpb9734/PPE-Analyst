@@ -1,53 +1,29 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
 export default function Home() {
 
-  // Ticker input
-  const [ticker, setTicker] = useState("");
+  const [ticker, setTicker] =
+    useState("");
 
-  // Assets
-  const [assets, setAssets] = useState([
-    {
-      id: 1,
-      name: "Equipment",
-      cost: 100000,
-      residual: 10000,
-      life: 20
-    }
-  ]);
-
-  // Monte Carlo result
-  const [meanDep, setMeanDep] = useState(0);
-
-  // Forecast schedule
-  const [schedule, setSchedule] = useState([]);
-
-  // URL parameters support
-  useEffect(() => {
-
-    const params = new URLSearchParams(window.location.search);
-
-    const lifeParam = params.get("life");
-    const residualParam = params.get("residual");
-    const costParam = params.get("cost");
-
-    if (lifeParam || residualParam || costParam) {
-
-      setAssets([{
+  const [assets, setAssets] =
+    useState([
+      {
         id: 1,
         name: "Equipment",
-        cost: Number(costParam) || 100000,
-        residual: Number(residualParam) || 10000,
-        life: Number(lifeParam) || 20
-      }]);
+        cost: 100000,
+        residual: 10000,
+        life: 20
+      }
+    ]);
 
-    }
+  const [meanDep, setMeanDep] =
+    useState(0);
 
-  }, []);
+  const [schedule, setSchedule] =
+    useState([]);
 
-  // Update asset
   function updateAsset(id, field, value) {
 
     setAssets(
@@ -60,7 +36,6 @@ export default function Home() {
 
   }
 
-  // Add asset
   function addAsset() {
 
     setAssets([
@@ -76,7 +51,6 @@ export default function Home() {
 
   }
 
-  // Monte Carlo
   function runMonteCarlo() {
 
     let results = [];
@@ -88,7 +62,8 @@ export default function Home() {
       assets.forEach(asset => {
 
         let lifeVar =
-          asset.life * (0.8 + Math.random() * 0.4);
+          asset.life *
+          (0.8 + Math.random() * 0.4);
 
         let residualVar =
           asset.residual *
@@ -114,7 +89,6 @@ export default function Home() {
 
   }
 
-  // Forecast
   function generateForecast() {
 
     let maxLife =
@@ -151,14 +125,15 @@ export default function Home() {
 
   }
 
-  // SEC Fetch (REAL API CALL)
+  // NEW — Real SEC Fetch
+
   async function fetchSECData() {
 
     try {
 
       if (!ticker) {
 
-        alert("Enter a ticker first.");
+        alert("Enter ticker first");
         return;
 
       }
@@ -178,19 +153,13 @@ export default function Home() {
 
       }
 
-      // Show filing link (temporary UI)
+      console.log(
+        "10-K Preview:",
+        data.preview
+      );
+
       alert(
-        `Latest 10-K Found:\n${data.filingURL}`
-      );
-
-      console.log(
-        "CIK:",
-        data.cik
-      );
-
-      console.log(
-        "Filing:",
-        data.filingURL
+        `10-K HTML Loaded for ${ticker}`
       );
 
     }
@@ -200,7 +169,7 @@ export default function Home() {
       console.log(error);
 
       alert(
-        "SEC request failed."
+        "SEC request failed"
       );
 
     }
@@ -213,9 +182,7 @@ export default function Home() {
 
       <h1>PPE Multi-Asset Simulator</h1>
 
-      {/* Ticker Input */}
-
-      <div style={{ marginBottom: 20 }}>
+      <div>
 
         <strong>Ticker:</strong>
 
@@ -225,7 +192,7 @@ export default function Home() {
           onChange={(e)=>
             setTicker(e.target.value)
           }
-          placeholder="Enter ticker (e.g., XOM)"
+          placeholder="Enter ticker"
         />
 
         <button onClick={fetchSECData}>
@@ -234,7 +201,7 @@ export default function Home() {
 
       </div>
 
-      {/* Asset Inputs */}
+      <br />
 
       {assets.map(asset => (
 
@@ -249,10 +216,9 @@ export default function Home() {
 
           <div>
 
-            <strong>Asset Name:</strong>
+            Asset Name:
 
             <input
-              type="text"
               value={asset.name}
               onChange={(e)=>
                 updateAsset(
@@ -267,7 +233,7 @@ export default function Home() {
 
           <div>
 
-            <strong>Cost:</strong>
+            Cost:
 
             <input
               type="number"
@@ -285,7 +251,7 @@ export default function Home() {
 
           <div>
 
-            <strong>Useful Life:</strong>
+            Useful Life:
 
             <input
               type="number"
@@ -303,7 +269,7 @@ export default function Home() {
 
           <div>
 
-            <strong>Residual:</strong>
+            Residual:
 
             <input
               type="number"
@@ -334,8 +300,10 @@ export default function Home() {
       </button>
 
       <h2>
+
         Mean Portfolio Depreciation:
         ${meanDep}
+
       </h2>
 
       <br />
@@ -348,13 +316,15 @@ export default function Home() {
 
       {schedule.length > 0 && (
 
-        <table border="1" cellPadding="5">
+        <table border="1">
 
           <thead>
 
             <tr>
+
               <th>Year</th>
               <th>Depreciation</th>
+
             </tr>
 
           </thead>
