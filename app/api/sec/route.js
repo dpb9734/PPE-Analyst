@@ -21,7 +21,7 @@ export async function GET(request) {
     const headers = {
 
       "User-Agent":
-        "PPE-Analyst your_email@example.com",
+        "PPE-Analyst dpb9734@nyu.edu",
 
       "Accept-Encoding":
         "gzip, deflate",
