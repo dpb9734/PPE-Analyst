@@ -21,7 +21,7 @@ export async function GET(request) {
     const headers = {
 
       "User-Agent":
-        "PPE-Analyst dpb9734@nyu.edu",
+        "PPE-Analyst your_email@example.com",
 
       "Accept-Encoding":
         "gzip, deflate",
@@ -68,7 +68,7 @@ export async function GET(request) {
 
     }
 
-    // STEP 2 — Find latest 10-K
+    // STEP 2 — Get latest 10-K
 
     const submissionResponse =
       await fetch(
@@ -105,7 +105,7 @@ export async function GET(request) {
     const filingURL =
       `https://www.sec.gov/Archives/edgar/data/${parseInt(cik)}/${accession}/${primaryDoc}`;
 
-    // STEP 3 — Download HTML
+    // STEP 3 — Download filing
 
     const filingResponse =
       await fetch(
@@ -113,34 +113,52 @@ export async function GET(request) {
         { headers }
       );
 
-    const filingHTML =
+    const html =
       await filingResponse.text();
 
-    const text =
-      filingHTML.toLowerCase();
+    // STEP 4 — Find PPE section
 
-    // STEP 4 — Find useful life patterns
+    const lower =
+      html.toLowerCase();
 
-    const lifeMatches =
-      text.match(
-        /(\d+)\s*(to|-)\s*(\d+)\s*years/g
+    const ppeIndex =
+      lower.indexOf(
+        "property, plant and equipment"
+      );
+
+    let snippet = "";
+
+    if (ppeIndex !== -1) {
+
+      snippet =
+        html.slice(
+          ppeIndex,
+          ppeIndex + 10000
+        );
+
+    }
+
+    // STEP 5 — Extract dollar values
+
+    const valueMatches =
+      snippet.match(
+        /\$?\s?\d{1,3}(,\d{3})+/g
       );
 
     let assets = [];
 
-    if (lifeMatches) {
+    if (valueMatches &&
+        valueMatches.length > 0) {
 
-      lifeMatches
-        .slice(0, 4)
-        .forEach((match, i) => {
+      valueMatches
+        .slice(0, 3)
+        .forEach((val, i) => {
 
-          const numbers =
-            match.match(/\d+/g);
-
-          const avgLife =
-            Math.round(
-              (Number(numbers[0]) +
-               Number(numbers[1])) / 2
+          let numeric =
+            Number(
+              val
+                .replace(/\$/g, "")
+                .replace(/,/g, "")
             );
 
           assets.push({
@@ -148,13 +166,14 @@ export async function GET(request) {
             id: i + 1,
 
             name:
-              `PPE Asset ${i + 1}`,
+              `PPE Category ${i + 1}`,
 
-            cost: 100000000,
+            cost: numeric,
 
-            residual: 5000000,
+            residual:
+              Math.round(numeric * 0.05),
 
-            life: avgLife
+            life: 20
 
           });
 
@@ -162,29 +181,18 @@ export async function GET(request) {
 
     }
 
-    // fallback if nothing found
-
     if (assets.length === 0) {
 
-      assets = [
-
-        {
-          id: 1,
-          name: "General Equipment",
-          cost: 100000000,
-          residual: 5000000,
-          life: 20
-        }
-
-      ];
+      return Response.json({
+        error:
+          "PPE table not detected"
+      });
 
     }
 
     return Response.json({
 
       ticker: ticker,
-
-      cik: cik,
 
       filingURL: filingURL,
 
@@ -199,7 +207,7 @@ export async function GET(request) {
     console.log(error);
 
     return Response.json({
-      error: "SEC fetch failed"
+      error: "SEC parsing failed"
     });
 
   }
