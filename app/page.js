@@ -15,6 +15,7 @@ export default function Home() {
   ]);
 
   const [meanDep, setMeanDep] = useState(0);
+  const [schedule, setSchedule] = useState([]);
 
   // URL parameter support
   useEffect(() => {
@@ -102,6 +103,42 @@ export default function Home() {
 
   }
 
+  function generateForecast() {
+
+    let maxLife =
+      Math.max(...assets.map(a => a.life));
+
+    let yearlySchedule = [];
+
+    for (let year = 1; year <= maxLife; year++) {
+
+      let totalDep = 0;
+
+      assets.forEach(asset => {
+
+        if (year <= asset.life) {
+
+          let dep =
+            (asset.cost - asset.residual) /
+            asset.life;
+
+          totalDep += dep;
+
+        }
+
+      });
+
+      yearlySchedule.push({
+        year: year,
+        depreciation: totalDep.toFixed(2)
+      });
+
+    }
+
+    setSchedule(yearlySchedule);
+
+  }
+
   return (
 
     <div style={{ padding: 40 }}>
@@ -155,7 +192,7 @@ export default function Home() {
 
           <div>
 
-            <strong>Useful Life (years):</strong>
+            <strong>Useful Life:</strong>
 
             <input
               type="number"
@@ -173,7 +210,7 @@ export default function Home() {
 
           <div>
 
-            <strong>Residual Value:</strong>
+            <strong>Residual:</strong>
 
             <input
               type="number"
@@ -207,6 +244,42 @@ export default function Home() {
         Mean Portfolio Depreciation:
         ${meanDep}
       </h2>
+
+      <br />
+
+      <button onClick={generateForecast}>
+        Generate Depreciation Forecast
+      </button>
+
+      <br /><br />
+
+      {schedule.length > 0 && (
+
+        <table border="1" cellPadding="5">
+
+          <thead>
+            <tr>
+              <th>Year</th>
+              <th>Depreciation</th>
+            </tr>
+          </thead>
+
+          <tbody>
+
+            {schedule.map(row => (
+
+              <tr key={row.year}>
+                <td>{row.year}</td>
+                <td>${row.depreciation}</td>
+              </tr>
+
+            ))}
+
+          </tbody>
+
+        </table>
+
+      )}
 
     </div>
 
